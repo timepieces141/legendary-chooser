@@ -3,15 +3,17 @@
 # Wrapper script for running all the tests using pytest and coverage
 
 cd `dirname $0`
-# PYTHONPATH="../src" python -m coverage run --source dir_not_in_src -m pytest $@
-PYTHONPATH="../src" python -m coverage run -m pytest $@
+PYTHONPATH="../src" python -m coverage run --source legendary -m pytest $@
 if [ "$?" != "0" ]; then
     exit 1
 fi
 
-python -m coverage report -m
+# generate coverage
+python -m coverage report -m | tee coverage.log
 python -m coverage html
 
 # invoke pylint on tests modules and source packages
-# pylint *py dir_not_in_src/*.py tests/*.py
-pylint *py
+echo
+echo "Pylint Analysis"
+shopt -s globstar
+pylint *py ../src/**/*.py | tee pylint.log

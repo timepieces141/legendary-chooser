@@ -33,7 +33,8 @@ import click
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s: %(message)s')
 
 LEGENDARY_SETS = [
-    "buffy"
+    "buffy",
+    "big_trouble"
 ]
 
 def get_version():

@@ -45,7 +45,7 @@ Schemes = Enum(  # pylint: disable=invalid-name
 # villains
 _BUFFY_VILLAINS = {
     1: ["Order of Aurelius", "ORDER_OF_AURELIUS"],
-    2: ["Glorys Minions", "GLORYS_MINIONS"],
+    2: ["Glory's Minions", "GLORYS_MINIONS"],
     3: ["The Mayor's Minions", "THE_MAYORS_MINIONS"],
     4: ["Scourge of Europe", "SCOURGE_OF_EUROPE"],
     5: ["The First's Minions", "THE_FIRSTS_MINIONS"],

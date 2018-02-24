@@ -3,23 +3,12 @@ The Package that holds all the configuration and theme-specific logic for the
 Big Trouble in Little China Legendary set.
 '''
 
-from . available import (available_schemes,
-                         required_masterminds,
-                         available_masterminds,
-                         required_villains,
-                         available_villains,
-                         required_henchmen,
-                         available_henchmen,
-                         required_heroes_for_villain_deck,
-                         available_heroes_for_villain_deck,
-                         required_heroes,
-                         available_heroes
-                        )
-from . rules import (mastermind_count,
-                     villain_count,
-                     henchmen_count,
-                     heroes_for_villain_deck_count,
-                     hero_count
+from . rules import (DEFAULT_BASE_RULES_CONFIG,
+                     DEFAULT_HOUSE_RULES_CONFIG,
+                     get_base_rules_config,
+                     set_base_rules_config,
+                     get_house_rules_config,
+                     set_house_rules_config,
                     )
 from . types import (Masterminds,
                      Schemes,

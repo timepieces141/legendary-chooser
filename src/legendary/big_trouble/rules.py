@@ -1,72 +1,52 @@
 '''
-The rules module provides the specific setup rules for the Big Trouble in Little
-China set. There are functions for finding out, for instance, how many villains,
-henchmen, and bystanders go into the Villain deck for a given player count. This
-module also leverages the Big Trouble-specific user config that allows for
-"house rules" to affect these counts and configurations.
+The rules module holds the default rules configuration(s) for the Big Trouble in
+Little China set.
 '''
 
-def mastermind_count(scheme, player_count=1):
+def get_base_rules_config():
     '''
-    Return the number for masterminds for the given Scheme.
+    Retrieve the base rules configuration.
+    '''
+    global _BASE_RULES_CONFIG
+    return _BASE_RULES_CONFIG
 
-    TODO: Since we have not yet created a format for the rules configuration
-    file where this would be stored, for now just return 1 (this is a problem
-    for the "One and the Same Person, Jack" scheme, but punt for now)
+def set_base_rules_config(config):
     '''
-    return 1
+    Set the base rules configuration.
+    '''
+    global _BASE_RULES_CONFIG
+    _BASE_RULES_CONFIG = config
 
-def villain_count(scheme, masterminds, player_count=1):
-    '''
-    Return the number for villains for the given Scheme and Masterminds.
+# the loaded base rules configuration
+_BASE_RULES_CONFIG = None
 
-    TODO: Since we have not yet created a format for the rules configuration
-    file where this would be stored, for now just return the number for the
-    given player count.
-    '''
-    if player_count == 1:
-        return 1
-    elif player_count == 2:
-        return 2
-    elif player_count == 3 or player_count == 4:
-        return 3
-    else:
-        return 4
+# base rules configuration to be saved upon first start up
+DEFAULT_BASE_RULES_CONFIG = '''
+{
 
-def henchmen_count(scheme, masterminds, player_count=1):
-    '''
-    Return the number for henchmen for the given Scheme and Masterminds.
+}
+'''
 
-    TODO: Since we have not yet created a format for the rules configuration
-    file where this would be stored, for now just return the number for the
-    given player count.
+def get_house_rules_config():
     '''
-    if player_count < 4:
-        return 1
-    else:
-        return 2
+    Retrieve the house rules configuration.
+    '''
+    global _HOUSE_RULES_CONFIG
+    return _HOUSE_RULES_CONFIG
 
-def heroes_for_villain_deck_count(scheme, masterminds, player_count=1):
+def set_house_rules_config(config):
     '''
-    Return the number for heroes to put in the villain deck for the given Scheme
-    and Masterminds.
+    Set the house rules configuration.
+    '''
+    global _HOUSE_RULES_CONFIG
+    _HOUSE_RULES_CONFIG = config
 
-    TODO: Since we have not yet created a format for the rules configuration
-    file where this would be stored, for now just return 0.
-    '''
-    return 0
+# the loaded house rules configuration
+_HOUSE_RULES_CONFIG = None
 
-def hero_count(scheme, masterminds, player_count=1):
-    '''
-    Return the number for heroes for the given Scheme and Masterminds.
+# house rules configuration to be save upon first start up
+DEFAULT_HOUSE_RULES_CONFIG = '''
+{
 
-    TODO: Since we have not yet created a format for the rules configuration
-    file where this would be stored, for now just return the number for the
-    given player count.
-    '''
-    if player_count == 1:
-        return 3
-    elif player_count < 5:
-        return 5
-    else:
-        return 6
+}
+'''

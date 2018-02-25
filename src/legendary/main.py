@@ -87,8 +87,9 @@ def validate_sets(ctx, param, value):
 @cli.command()
 @click.option('-s', '--include-set', required=True, multiple=True, callback=validate_sets)
 @click.option('-c', '--player-count', default=1)
+@click.option('--always-leads/--disable-always-leads', default=True)
 @click.pass_context
-def generate(ctx, include_set, player_count):
+def generate(ctx, include_set, player_count, always_leads):
     '''
     Generate a game configuration, complete with Mastermind, Scheme, Villain
     Deck Configuration, and Hero Deck Configuration.
@@ -105,7 +106,7 @@ def generate(ctx, include_set, player_count):
     # bootstrap with scheme-filled game configs
     for legendary_set in imported_packages:
         for scheme in legendary_set.Schemes:
-            game_config = GameConfiguration(scheme, legendary_set.__name__, player_count)
+            game_config = GameConfiguration(scheme, legendary_set.__name__, always_leads, player_count)
             if game_config.validate():
                 to_process.append(game_config)
 
@@ -115,7 +116,7 @@ def generate(ctx, include_set, player_count):
         game_config = to_process.pop()
 
         # find out what card class is next (Masterminds, Villains, or Henchmen)
-        next_card_class = game_config.next_game_component()
+        next_card_class, append_method = game_config.next_game_component()
 
         # loop through the included sets
         for legendary_set in imported_packages:
@@ -129,7 +130,7 @@ def generate(ctx, include_set, player_count):
                 new_config = copy.deepcopy(game_config)
 
                 # add the new card group
-                getattr(new_config, "append_{}".format(card_class.__name__.lower()))(card_group, legendary_set.__name__)
+                getattr(new_config, append_method)(card_group, legendary_set.__name__)
 
                 # validate
                 if new_config.validate():
@@ -143,6 +144,6 @@ def generate(ctx, include_set, player_count):
                     else:
                         final_game_configs.append(new_config)
 
-    # we now have all the valid game configs (minus heroes) - time to choose one, so dish off to the configured decision engine
+    # # we now have all the valid game configs (minus heroes) - time to choose one, so dish off to the configured decision engine
     # for game_config in final_game_configs:
     #     logging.info(game_config)

@@ -16,75 +16,21 @@ from appdirs import user_data_dir
 
 ## This section of functions is used to validate game configurations.
 
-def masterminds_count(scheme, scheme_package, player_count):
-    '''
-    For the given scheme, and against the base and house rules, retrieve the
-    number of Masterminds required for a valid setup.
-    '''
-    return _abstract_counts(scheme, scheme_package, player_count, "masterminds")
-
-def villains_count(scheme, scheme_package, player_count):
-    '''
-    For the given scheme, and against the base and house rules, retrieve the
-    number of Villains required for a valid setup.
-    '''
-    return _abstract_counts(scheme, scheme_package, player_count, "villains")
-
-def henchmen_count(scheme, scheme_package, player_count):
-    '''
-    For the given scheme, and against the base and house rules, retrieve the
-    number of Henchmen required for a valid setup.
-    '''
-    return _abstract_counts(scheme, scheme_package, player_count, "henchmen")
-
-def enforcers_count(scheme, scheme_package, player_count):
-    '''
-    For the given scheme, and against the base and house rules, retrieve the
-    number of Villains for the Enforcer deck required for a valid setup.
-    '''
-    return _abstract_counts(scheme, scheme_package, player_count, "enforcers")
-
-def heroes_in_villain_deck_count(scheme, scheme_package, player_count):
-    '''
-    For the given scheme, and against the base and house rules, retrieve the
-    number of Heroes for the Villain deck required for a valid setup.
-    '''
-    return _abstract_counts(scheme, scheme_package, player_count, "heroes_in_villain_deck")
-
-def heroes_count(scheme, scheme_package, player_count):
-    '''
-    For the given scheme, and against the base and house rules, retrieve the
-    number of Heroes for the Hero deck required for a valid setup.
-    '''
-    return _abstract_counts(scheme, scheme_package, player_count, "heroes")
-
-def _abstract_counts(scheme, scheme_package, player_count, card_class):
+def count(scheme, scheme_package, player_count, card_class):
     '''
     Grab counts for the given card class from the rule sets.
     '''
-    # load the base rules in the legendary set, if neccesary
-    _load_rules_configuration(scheme_package)
-
     # get the count from the base rules
     base_rules = getattr(scheme_package, "get_base_rules_config")()
+    house_rules = getattr(scheme_package, "get_house_rules_config")()
     base_count = base_rules["player_counts"][str(player_count)][card_class]
 
-    # add any scheme-specific changes from the base rules
-    if str(scheme.value) in base_rules["scheme_rules"]:
-        if card_class in base_rules["scheme_rules"][str(scheme.value)]:
-            if "diff" in base_rules["scheme_rules"][str(scheme.value)][card_class]:
-                base_count += base_rules["scheme_rules"][str(scheme.value)][card_class]["diff"]
-
-    # load the house rules in the legendary set, if neccesary
-    _load_rules_configuration(scheme_package, "house")
-
-    # add any scheme-specific changes from the house rules
-    house_rules = getattr(scheme_package, "get_house_rules_config")()
-    if "scheme_rules" in house_rules:
-        if str(scheme.value) in house_rules["scheme_rules"]:
-            if card_class in house_rules["scheme_rules"][str(scheme.value)]:
-                if "diff" in house_rules["scheme_rules"][str(scheme.value)][card_class]:
-                    base_count += house_rules["scheme_rules"][str(scheme.value)][card_class]["diff"]
+    for rules_set in [base_rules, house_rules]:
+        if "scheme_rules" in rules_set:
+            if str(scheme.value) in rules_set["scheme_rules"]:
+                if card_class in rules_set["scheme_rules"][str(scheme.value)]:
+                    if "diff" in rules_set["scheme_rules"][str(scheme.value)][card_class]:
+                        base_count += rules_set["scheme_rules"][str(scheme.value)][card_class]["diff"]
 
     return base_count
 
@@ -93,135 +39,94 @@ def scheme_blacklisted(scheme, scheme_package, player_count):
     Whether or not the given Scheme is blacklisted by player count in either
     rule set.
     '''
-    # load the base rules in the legendary set, if neccesary
-    _load_rules_configuration(scheme_package)
-
     # traverse the base rules to find the blacklisted schemes
     blacklisted = []
-    config = getattr(scheme_package, "get_base_rules_config")()
-    if "blacklisted_schemes" in config:
-        if str(player_count) in config["blacklisted_schemes"]:
-            for scheme_index in config["blacklisted_schemes"][str(player_count)]:
-                blacklisted_scheme = scheme_package.Schemes(scheme_index)
-                blacklisted.append(blacklisted_scheme)
-
-    # load the house rules in the legendary set, if neccesary
-    _load_rules_configuration(scheme_package, "house")
-
-    # traverse the house rules to find the blacklisted schemes
-    config = getattr(scheme_package, "get_house_rules_config")()
-    if "blacklisted_schemes" in config:
-        if str(player_count) in config["blacklisted_schemes"]:
-            for scheme_index in config["blacklisted_schemes"][str(player_count)]:
-                blacklisted_scheme = scheme_package.Schemes(scheme_index)
-                blacklisted.append(blacklisted_scheme)
+    for rules_set in ["base", "house"]:
+        config = getattr(scheme_package, "get_{}_rules_config".format(rules_set))()
+        if "blacklisted_schemes" in config:
+            if str(player_count) in config["blacklisted_schemes"]:
+                for scheme_index in config["blacklisted_schemes"][str(player_count)]:
+                    blacklisted_scheme = scheme_package.Schemes(scheme_index)
+                    blacklisted.append(blacklisted_scheme)
 
     # return if scheme is in the blacklist
     return scheme in blacklisted
 
-def required_masterminds(scheme, scheme_package):
+def required(scheme, scheme_package, component_type):
     '''
-    Retrieve the "required" Masterminds for the given Scheme. This returns
-    either a set of Masterminds, or "None" if none are required. A requirement
-    set (returned here) need only be a *subset* (but can be identitcal) to the
-    configured masterminds to pass validation.
+    Retrieve the set of "required" card groups of the given component type, for
+    the given Scheme. This returns either a set of card groups for the given
+    component type, or "None" if none are required. A requirement set (returned
+    here) need only be a *subset* (but can be identitcal) to the configured
+    component type to pass validation.
     '''
-    # load the base rules in the legendary set, if neccesary
-    _load_rules_configuration(scheme_package)
-
-    # traverse the base rules to find required masterminds
+    # traverse the base rules to find required components
     required = set()
-    config = getattr(scheme_package, "get_base_rules_config")()
-    if "scheme_rules" in config:
-        if str(scheme.value) in config["scheme_rules"]:
-            if "masterminds" in config["scheme_rules"][str(scheme.value)]:
-                if "required" in config["scheme_rules"][str(scheme.value)]["masterminds"]:
-                    for mastermind_index in config["scheme_rules"][str(scheme.value)]["masterminds"]["required"]:
-                        mastermind = scheme_package.Masterminds(mastermind_index)
-                        required.update([mastermind])
-
-    # load the house rules in the legendary set, if neccesary
-    _load_rules_configuration(scheme_package, "house")
-
-    # traverse the house rules to find required masterminds (these trump the
-    # base rules entirely, including removing the requirement by making the list
-    # empty)
-    config = getattr(scheme_package, "get_house_rules_config")()
-    if "scheme_rules" in config:
-        if str(scheme.value) in config["scheme_rules"]:
-            if "masterminds" in config["scheme_rules"][str(scheme.value)]:
-                if "required" in config["scheme_rules"][str(scheme.value)]["masterminds"]:
-                    required = set()
-                    for mastermind_index in config["scheme_rules"][str(scheme.value)]["masterminds"]["required"]:
-                        mastermind = scheme_package.Masterminds(mastermind_index)
-                        required.update([mastermind])
+    for rules_set in ["base", "house"]:
+        config = getattr(scheme_package, "get_{}_rules_config".format(rules_set))()
+        if "scheme_rules" in config:
+            if str(scheme.value) in config["scheme_rules"]:
+                if component_type in config["scheme_rules"][str(scheme.value)]:
+                    if "required" in config["scheme_rules"][str(scheme.value)][component_type]:
+                        for index in config["scheme_rules"][str(scheme.value)][component_type]["required"]:
+                            component = getattr(scheme_package, component_type.title())(index)
+                            required.update([component])
 
     # return the list or None if it is empty
     return None if len(required) == 0 else required
 
-def exclusive_masterminds(scheme, scheme_package):
+def exclusive(scheme, scheme_package, component_type):
     '''
-    Retrieve the "exclusive" Masterminds for the given Scheme. This returns
-    either a set of Masterminds, or "None" if none are exclusively required. An
-    exclusive set (returned here) must be identical or a superset of the
-    configured masterminds to pass validation.
+    Retrieve the set of "exclusive" card groups of the given component type, for
+    the given Scheme. This returns either a set of card groups for the given
+    component type, or "None" if none are required. An exclusive set (returned
+    here) must be identical or a superset of the configured component type to
+    pass validation.
     '''
-    # load the base rules in the legendary set, if neccesary
-    _load_rules_configuration(scheme_package)
-
-    # traverse the base rules to find exclusively required masterminds
+    # traverse the base rules to find exclusive components
     exclusive = set()
-    config = getattr(scheme_package, "get_base_rules_config")()
-    if "scheme_rules" in config:
-        if str(scheme.value) in config["scheme_rules"]:
-            if "masterminds" in config["scheme_rules"][str(scheme.value)]:
-                if "exclusive" in config["scheme_rules"][str(scheme.value)]["masterminds"]:
-                    for mastermind_index in config["scheme_rules"][str(scheme.value)]["masterminds"]["exclusive"]:
-                        mastermind = scheme_package.Masterminds(mastermind_index)
-                        exclusive.update([mastermind])
-
-    # load the house rules in the legendary set, if neccesary
-    _load_rules_configuration(scheme_package, "house")
-
-    # traverse the house rules to find exclusively required masterminds (these
-    # trump the base rules entirely, including removing the requirement by
-    # making the list empty)
-    config = getattr(scheme_package, "get_house_rules_config")()
-    if "scheme_rules" in config:
-        if str(scheme.value) in config["scheme_rules"]:
-            if "masterminds" in config["scheme_rules"][str(scheme.value)]:
-                if "exclusive" in config["scheme_rules"][str(scheme.value)]["masterminds"]:
-                    exclusive = set()
-                    for mastermind_index in config["scheme_rules"][str(scheme.value)]["masterminds"]["exclusive"]:
-                        mastermind = scheme_package.Masterminds(mastermind_index)
-                        exclusive.update([mastermind])
+    for rules_set in ["base", "house"]:
+        config = getattr(scheme_package, "get_{}_rules_config".format(rules_set))()
+        if "scheme_rules" in config:
+            if str(scheme.value) in config["scheme_rules"]:
+                if component_type in config["scheme_rules"][str(scheme.value)]:
+                    if "exclusive" in config["scheme_rules"][str(scheme.value)][component_type]:
+                        for index in config["scheme_rules"][str(scheme.value)][component_type]["exclusive"]:
+                            component = getattr(scheme_package, component_type.title())(index)
+                            exclusive.update([component])
 
     # return the list or None if it is empty
     return None if len(exclusive) == 0 else exclusive
-
-
-
-
-
-
 
 ## This section is for loading the various rules configurations from file, and
 #  in the case the file does not yet exist, loading a default configuration and
 #  saving it to file.
 #
-#  A Note about the format of the rules configurations. TODO: Fill this in.
+#  A Note about the format of the rules configurations. The base rules are
+#  divided into three section. In section one we find the "counts" of card
+#  groups categorized by player count. For instance, in a 3-4 player game there
+#  are 3 villain groups in the villain deck. In section two we find the
+#  blacklisted schemes categorized by player count. For instance, some schemes
+#  are not valid for solo play. And finally in section three, we find the
+#  scheme-specific rules. The first level denotes the Scheme by number (the enum
+#  index). The second level denotes the card group that has the special rule,
+#  such as masterminds, villains, etc. And the third level has any of three
+#  possible keywords:
 #
-#  "exclusive" means that the list of configured items of that card type must be a
-#  subset of the list (all configured items must be in the list from the rules,
-#  and the list *cannot* contain other items)
+#  "diff": [integer] Adds or subtracts to the count (as established in section
+#  one)
 #
-#  "diff": adds or subtracts to the count
+#  "required": [list of enum indices] These item(s) are required, but not
+#  exclusively - so as long as the list from the rules is a subset of the list
+#  from the configuration, the game configuration will pass validation
 #
-#  "required" means that the item(s) are required, but not exclusively - so as
-#  long as the list from the rules is a subset of the list from the
-#  configuration, the config will pass validation
+#  "exclusive": [list of enum indices] The list of configured items in the game
+#  configuration of the card type (defined in level two) must be a subset of
+#  this list (all configured items must be in the list from the rules, and the
+#  list *cannot* contain other items)
+#
 
-def _load_rules_configuration(set_package, rules_type="base"):
+def load_rules_configuration(set_package, rules_type="base"):
     '''
     Load the rules configuration from disk. If the file does not exist, save the
     default config to disk after loading it for use here.

@@ -29,6 +29,7 @@ import click
 # from . import rules
 from . components import GameConfiguration
 from . import util
+from . rules import load_rules_configuration
 
 # available sets
 LEGENDARY_SETS = [
@@ -56,8 +57,7 @@ def get_version():
 @click.group()
 @click.version_option(version=get_version(), message="Legendary Chooser\nversion %(version)s")
 @click.option('-v', '--verbosity', count=True, help="Set the level of verbosity. Multiple options increase the verbosity")
-@click.pass_context
-def cli(ctx, verbosity):
+def cli(verbosity):
     '''
     Command Line Utility for choosing Legendary configurations, saving game
     plays of specific configurations, and launching analysis tools.
@@ -66,9 +66,6 @@ def cli(ctx, verbosity):
     if verbosity > 4:
         verbosity = 4
     logging.basicConfig(level=LOGGING_LEVELS[str(verbosity)], format='%(asctime)s - %(levelname)s: %(message)s')
-
-    # initialize the context object as a dictionary
-    ctx.obj = {}
 
 def validate_sets(ctx, param, value):
     '''
@@ -88,19 +85,22 @@ def validate_sets(ctx, param, value):
 @click.option('-s', '--include-set', required=True, multiple=True, callback=validate_sets)
 @click.option('-c', '--player-count', default=1)
 @click.option('--always-leads/--disable-always-leads', default=True)
-@click.pass_context
-def generate(ctx, include_set, player_count, always_leads):
+def generate(include_set, player_count, always_leads):
     '''
     Generate a game configuration, complete with Mastermind, Scheme, Villain
     Deck Configuration, and Hero Deck Configuration.
     '''
-    # loop through the included sets and load the necessary packages
+    # loop through the included sets and load the necessary packages and rules
+    # configs
     imported_packages = []
     for legendary_set in include_set:
-        imported_packages.append(util.get_package_from_name("legendary.{}".format(legendary_set)))
+        set_package = util.get_package_from_name("legendary.{}".format(legendary_set))
+        imported_packages.append(set_package)
+        for rule_set in ["base", "house"]:
+            load_rules_configuration(set_package, rule_set)
 
     # data structures for holding game configs
-    final_game_configs = []
+    final_game_configs = set()
     to_process = []
 
     # bootstrap with scheme-filled game configs
@@ -112,6 +112,7 @@ def generate(ctx, include_set, player_count, always_leads):
 
     # loop until processing list is empty
     while len(to_process) > 0:
+
         # grab a game config
         game_config = to_process.pop()
 
@@ -130,20 +131,34 @@ def generate(ctx, include_set, player_count, always_leads):
                 new_config = copy.deepcopy(game_config)
 
                 # add the new card group
+                dup_detector = len(getattr(new_config, next_card_class.lower()))
                 getattr(new_config, append_method)(card_group, legendary_set.__name__)
 
-                # validate
+                # if this addition didn't change the config, we just tried to
+                # add a card class the config already had - toss this one
+                if dup_detector == len(getattr(new_config, next_card_class.lower())):
+                    continue
+
+                # only validate at game component borders - if
+                # next_game_component returns something (not False), check if we
+                # are set to add the same component we just did
+                if new_config.next_game_component():
+                    if next_card_class == new_config.next_game_component()[0]:
+                        to_process.append(new_config)
+                        continue
+
+                # if we're on a component border, validate
                 if new_config.validate():
 
-                    # if there's more to add to the config, append it for
+                    # if there are more components to add, append it for further
                     # processing
                     if new_config.next_game_component():
                         to_process.append(new_config)
 
                     # we're done, add it to the final list
                     else:
-                        final_game_configs.append(new_config)
+                        final_game_configs.update([new_config])
 
-    # # we now have all the valid game configs (minus heroes) - time to choose one, so dish off to the configured decision engine
-    # for game_config in final_game_configs:
-    #     logging.info(game_config)
+    # we now have all the valid game configs (minus heroes) - time to choose one, so dish off to the configured decision engine
+    for game_config in final_game_configs:
+        logging.info(game_config.__repr__())

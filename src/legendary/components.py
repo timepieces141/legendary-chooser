@@ -126,29 +126,78 @@ class GameConfiguration(object):
         # at this point, we're done
         return False
 
-    def check_required(self, component_type, component_values):
+    def _check_required(self, component_type, component_values):
         '''
         Check if what's configured here is a superset of what is required in the
         rules.
         '''
         required = rules.required(self.scheme[0], util.get_package_from_name(self.scheme[1]), component_type)
-        # required = getattr(rules, "required_{}".format(component_type))(self.scheme[0], util.get_package_from_name(self.scheme[1]))
         if required is not None:
             if not required.issubset(component_values):
                 return False
 
         return True
 
-    def check_exclusive(self, component_type, component_values):
+    def _check_exclusive(self, component_type, component_values):
         '''
         Check if what's configured here is a subset of what is required in the
         rules.
         '''
         exclusive = rules.exclusive(self.scheme[0], util.get_package_from_name(self.scheme[1]), component_type)
-        # exclusive = getattr(rules, "exclusive_{}".format(component_type))(self.scheme[0], util.get_package_from_name(self.scheme[1]))
         if exclusive is not None:
             if not set(component_values).issubset(exclusive):
                 return False
+
+        return True
+
+    def _simple_validate(self, card_group, card_group_dict):
+        '''
+        Validate a card group.
+        '''
+        # required
+        if not self._check_required(card_group, card_group_dict.keys()):
+            return False
+
+        # exclusive
+        if not self._check_exclusive(card_group, card_group_dict.keys()):
+            return False
+
+        return True
+
+    def _validate_villains(self):
+        '''
+        Validate villains - they are slightly different because of the "always
+        leads" rule.
+        '''
+        # if always leads is True, make sure the villains set has the villain the mastermind always leads
+        if self.always_leads:
+            # always leads villains for configured masterminds
+            always_lead_villains = []
+            for mastermind, mastermind_package_name in self.masterminds.items():
+                mastermind_package = util.get_package_from_name(mastermind_package_name)
+                always_lead_villains.append(mastermind_package.Villains(mastermind.value))
+
+            # if we have less villains than masterminds, all must be in
+            # always leads, otherwise we only need as many successes as
+            # there are masterminds
+            successes_needed = min(len(self.villains), len(self.masterminds))
+            for villain, _ in self.villains.items():
+                if villain in always_lead_villains:
+                    successes_needed -= 1
+
+            # check
+            if successes_needed > 0:
+                return False
+
+        return self._simple_validate("villains", self.villains)
+
+    def _validate_scheme(self):
+        '''
+        '''
+        # validate the scheme
+        if rules.scheme_blacklisted(self.scheme[0], util.get_package_from_name(self.scheme[1]), self.player_count):
+            logging.debug("Config with blacklisted scheme \"%s\" marked as invalid", self.scheme[0].name)
+            return False
 
         return True
 
@@ -157,102 +206,35 @@ class GameConfiguration(object):
         Validate the game configuration so far.
         '''
         # if there are heroes in the villain deck, validate them
-        if len(self.heroes_in_villain_deck) > 0:
+        if self.heroes_in_villain_deck:
 
-            # required
-            if not self.check_required("heroes_in_villain_deck", self.heroes_in_villain_deck.keys()):
-                return False
-
-            # exclusive
-            if not self.check_exclusive("heroes_in_villain_deck", self.heroes_in_villain_deck.keys()):
-                return False
-
-            return True
+            return self._simple_validate("heroes_in_villain_deck", self.heroes_in_villain_deck)
 
         # if there are villains in the enforcer deck, validate them
-        if len(self.enforcers) > 0:
+        if self.enforcers:
 
-            # required
-            if not self.check_required("enforcers", self.enforcers.keys()):
-                return False
-
-            # exclusive
-            if not self.check_exclusive("enforcers", self.enforcers.keys()):
-                return False
-
-            return True
+            return self._simple_validate("enforcers", self.enforcers)
 
         # if there are henchmen, validate them
-        if len(self.henchmen) > 0:
+        if self.henchmen:
 
-            # required
-            if not self.check_required("henchmen", self.henchmen.keys()):
-                return False
-
-            # exclusive
-            if not self.check_exclusive("henchmen", self.henchmen.keys()):
-                return False
-
-            return True
+            return self._simple_validate("henchmen", self.henchmen)
 
         # # if there are villains, validate them
-        if len(self.villains) > 0:
+        if self.villains:
 
-            # if always leads is True, make sure the villains set has the villain the mastermind always leads
-            if self.always_leads:
-                # always leads villains for configured masterminds
-                always_lead_villains = []
-                for mastermind, mastermind_package_name in self.masterminds.items():
-                    mastermind_package = util.get_package_from_name(mastermind_package_name)
-                    always_lead_villains.append(mastermind_package.Villains(mastermind.value))
-
-                # if we have less villains than masterminds, all must be in
-                # always leads, otherwise we only need as many successes as
-                # there are masterminds
-                successes_needed = min(len(self.villains), len(self.masterminds))
-                for villain, _ in self.villains.items():
-                    if villain in always_lead_villains:
-                        successes_needed -= 1
-
-                # check
-                if successes_needed > 0:
-                    return False
-
-            # required
-            if not self.check_required("villains", self.villains.keys()):
-                return False
-
-            # exclusive
-            if not self.check_exclusive("villains", self.villains.keys()):
-                return False
-
-            return True
+            return self._validate_villains()
 
         # if there are masterminds, validate them
-        if len(self.masterminds) > 0:
+        if self.masterminds:
 
-            # required
-            if not self.check_required("masterminds", self.masterminds.keys()):
-                return False
+            return self._simple_validate("masterminds", self.masterminds)
 
-            # exclusive
-            if not self.check_exclusive("masterminds", self.masterminds.keys()):
-                return False
+        # and last, scheme
+        return self._validate_scheme()
 
-            # already validated the scheme
-            return True
-
-        # validate the scheme
-        if rules.scheme_blacklisted(self.scheme[0], util.get_package_from_name(self.scheme[1]), self.player_count):
-            logging.debug("Config with blacklisted scheme \"%s\" marked as invalid", self.scheme[0].name)
-            return False
-
-        return True
 
     def __str__(self):
-        '''
-        String representation of this object.
-        '''
         string_repr = "\nGame Configuration\n"
         string_repr += "\tScheme: {}\n".format(self.scheme[0].name)
         for mastermind, _ in self.masterminds.items():
@@ -280,15 +262,11 @@ class GameConfiguration(object):
                     self.masterminds.keys() == other.masterminds.keys() and
                     self.villains.keys() == other.villains.keys() and
                     self.henchmen.keys() == other.henchmen.keys()
-                ):
+               ):
                 return True
         return NotImplemented
 
     def __hash__(self):
-        '''
-        Please note that GameConfiguration is *mutable*. Only add this to sets,
-        as dict keys, etc. if it is fully constructed and won't change.
-        '''
         hash_list = [self.scheme[0]]
         hash_list += sorted(self.masterminds, key=lambda elem: elem.value)
         hash_list += sorted(self.villains, key=lambda elem: elem.value)

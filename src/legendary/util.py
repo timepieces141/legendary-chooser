@@ -23,4 +23,4 @@ def get_package_from_name(legendary_set):
     set_package = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(set_package)
     _LOADED_PACKAGES[legendary_set] = set_package
-    return set_package
+    return _LOADED_PACKAGES[legendary_set]

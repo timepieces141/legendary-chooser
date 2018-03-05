@@ -5,10 +5,8 @@ Buffy the Vampire Slayer Legendary set.
 
 from . rules import (DEFAULT_BASE_RULES_CONFIG,
                      DEFAULT_HOUSE_RULES_CONFIG,
-                     get_base_rules_config,
-                     set_base_rules_config,
-                     get_house_rules_config,
-                     set_house_rules_config,
+                     BASE_RULES_CONFIG,
+                     HOUSE_RULES_CONFIG
                     )
 from . types import (Masterminds,
                      Schemes,

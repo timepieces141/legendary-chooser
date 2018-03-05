@@ -21,8 +21,8 @@ def count(scheme, scheme_package, player_count, card_class):
     Grab counts for the given card class from the rule sets.
     '''
     # get the count from the base rules
-    base_rules = getattr(scheme_package, "get_base_rules_config")()
-    house_rules = getattr(scheme_package, "get_house_rules_config")()
+    base_rules = getattr(scheme_package, "BASE_RULES_CONFIG")
+    house_rules = getattr(scheme_package, "HOUSE_RULES_CONFIG")
     base_count = base_rules["player_counts"][str(player_count)][card_class]
 
     for rules_set in [base_rules, house_rules]:
@@ -32,7 +32,9 @@ def count(scheme, scheme_package, player_count, card_class):
                     if "diff" in rules_set["scheme_rules"][str(scheme.value)][card_class]:
                         base_count += rules_set["scheme_rules"][str(scheme.value)][card_class]["diff"]
 
-    return base_count
+    # if this brings us below zero, return zero (can't have negative cards in a
+    # deck!)
+    return base_count if base_count > 0 else 0
 
 def scheme_blacklisted(scheme, scheme_package, player_count):
     '''
@@ -41,8 +43,8 @@ def scheme_blacklisted(scheme, scheme_package, player_count):
     '''
     # traverse the base rules to find the blacklisted schemes
     blacklisted = []
-    for rules_set in ["base", "house"]:
-        config = getattr(scheme_package, "get_{}_rules_config".format(rules_set))()
+    for rules_set in ["BASE", "HOUSE"]:
+        config = getattr(scheme_package, "{}_RULES_CONFIG".format(rules_set))
         if "blacklisted_schemes" in config:
             if str(player_count) in config["blacklisted_schemes"]:
                 for scheme_index in config["blacklisted_schemes"][str(player_count)]:
@@ -62,8 +64,8 @@ def required(scheme, scheme_package, component_type):
     '''
     # traverse the base rules to find required components
     required = set()
-    for rules_set in ["base", "house"]:
-        config = getattr(scheme_package, "get_{}_rules_config".format(rules_set))()
+    for rules_set in ["BASE", "HOUSE"]:
+        config = getattr(scheme_package, "{}_RULES_CONFIG".format(rules_set))
         if "scheme_rules" in config:
             if str(scheme.value) in config["scheme_rules"]:
                 if component_type in config["scheme_rules"][str(scheme.value)]:
@@ -85,8 +87,8 @@ def exclusive(scheme, scheme_package, component_type):
     '''
     # traverse the base rules to find exclusive components
     exclusive = set()
-    for rules_set in ["base", "house"]:
-        config = getattr(scheme_package, "get_{}_rules_config".format(rules_set))()
+    for rules_set in ["BASE", "HOUSE"]:
+        config = getattr(scheme_package, "{}_RULES_CONFIG".format(rules_set))
         if "scheme_rules" in config:
             if str(scheme.value) in config["scheme_rules"]:
                 if component_type in config["scheme_rules"][str(scheme.value)]:
@@ -126,6 +128,21 @@ def exclusive(scheme, scheme_package, component_type):
 #  list *cannot* contain other items)
 #
 
+def _create_directory(directory):
+    '''
+    Create a directory, if necessary.
+    '''
+    # ensure directory exists
+    try:
+        os.makedirs(directory)
+        logging.debug("Created the user data directory at: %s", directory)
+    except OSError as os_error:
+        # ignore if it already exists - this will be true 99% of the time
+        if os_error.errno == errno.EEXIST:
+            logging.debug("User data directory '%s' already exists", directory)
+        else:
+            raise
+
 def load_rules_configuration(set_package, rules_type="base"):
     '''
     Load the rules configuration from disk. If the file does not exist, save the
@@ -135,19 +152,13 @@ def load_rules_configuration(set_package, rules_type="base"):
     package_name = set_package.__name__.split(".")[-1]
 
     # skip if already loaded
-    if getattr(set_package, "get_{}_rules_config".format(rules_type))() is not None:
+    if getattr(set_package, "{}_RULES_CONFIG".format(rules_type.upper())) is not None:
         logging.debug("'%s' %s rules configuration already loaded, skipping...", package_name.replace("_"," ").title(), rules_type)
         return
 
-    # ensure data directory exists
+    # ensure the data directory exists
     data_dir = user_data_dir("legendary", "Edward Petersen")
-    try:
-        os.makedirs(data_dir)
-        logging.debug("Created the user data directory at: {}", data_dir)
-    except OSError as os_error:
-        # ignore if it already exists - this will be true 99% of the time
-        if os_error.errno != errno.EEXIST:
-            raise
+    _create_directory(data_dir)
 
     # attempt to load the rules config file - on error, load the default and
     # save it to file
@@ -155,11 +166,11 @@ def load_rules_configuration(set_package, rules_type="base"):
     rules_config_file = os.path.join(data_dir, file_name)
     try:
         with open(rules_config_file, "r") as rules_config_data_ref:
-            getattr(set_package, "set_{}_rules_config".format(rules_type))(json.load(rules_config_data_ref))
+            setattr(set_package, "{}_RULES_CONFIG".format(rules_type.upper()), json.load(rules_config_data_ref))
             logging.info("'%s' %s rules configuration loaded", package_name.replace("_"," ").title(), rules_type)
     except FileNotFoundError:
         default_config = "DEFAULT_{}_RULES_CONFIG".format(rules_type.upper())
-        getattr(set_package, "set_{}_rules_config".format(rules_type))(json.loads(getattr(set_package, default_config)))
+        setattr(set_package, "{}_RULES_CONFIG".format(rules_type.upper()), json.loads(getattr(set_package, default_config)))
         with open(rules_config_file, "w") as rules_config_data_ref:
-            json.dump(getattr(set_package, "get_{}_rules_config".format(rules_type))(), rules_config_data_ref)
+            json.dump(getattr(set_package, "{}_RULES_CONFIG".format(rules_type.upper())), rules_config_data_ref)
             logging.info("Created default '%s' %s rules configuration file", package_name.replace("_"," ").title(), rules_type)

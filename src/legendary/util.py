@@ -14,7 +14,6 @@ def get_package_from_name(legendary_set):
     and return a reference to it.
     '''
     # skip if already loaded
-    global _LOADED_PACKAGES
     if legendary_set in _LOADED_PACKAGES:
         return _LOADED_PACKAGES[legendary_set]
 

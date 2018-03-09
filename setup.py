@@ -28,13 +28,13 @@ CLASSIFIERS = [
     'License :: OSI Approved :: MIT License',
 
     # python 3 supported
-    'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.0',
-    'Programming Language :: Python :: 3.1',
-    'Programming Language :: Python :: 3.2',
-    'Programming Language :: Python :: 3.3',
-    'Programming Language :: Python :: 3.4',
-    'Programming Language :: Python :: 3.5',
+    # 'Programming Language :: Python :: 3',
+    # 'Programming Language :: Python :: 3.0',
+    # 'Programming Language :: Python :: 3.1',
+    # 'Programming Language :: Python :: 3.2',
+    # 'Programming Language :: Python :: 3.3',
+    # 'Programming Language :: Python :: 3.4',
+    # 'Programming Language :: Python :: 3.5',
     'Programming Language :: Python :: 3.6',
 
     # it's for a card game, right?
@@ -45,7 +45,8 @@ CLASSIFIERS = [
 PACKAGE_DIR = {'': 'src'}
 PACKAGES = [
     'legendary',
-    'legendary/buffy'
+    'legendary/buffy',
+    'legendary/big_trouble'
 ]
 
 # scripts

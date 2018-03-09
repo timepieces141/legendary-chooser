@@ -61,7 +61,8 @@ def test_get_package_from_name_bad_set():
         with pytest.raises(AttributeError):
             util.get_package_from_name(bad_arg)
 
-def test_get_package_from_name_success(monkeypatch, find_spec, module_from_spec): # pylint: disable=redefined-outer-name
+def test_get_package_from_name_success(find_spec, module_from_spec, # pylint: disable=redefined-outer-name
+                                       monkeypatch):
     '''
     Test the get_package_from_name function where the given legendary set
     (package) is valid. Here we monkeypatch the actual loading of the module, as

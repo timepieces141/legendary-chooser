@@ -9,7 +9,6 @@ import errno
 import json
 import logging
 import os
-import sys
 
 # third party libraries
 from appdirs import user_data_dir
@@ -63,7 +62,7 @@ def required(scheme, scheme_package, component_type):
     component type to pass validation.
     '''
     # traverse the base rules to find required components
-    required = set()
+    required_set = set()
     for rules_set in ["BASE", "HOUSE"]:
         config = getattr(scheme_package, "{}_RULES_CONFIG".format(rules_set))
         if "scheme_rules" in config:
@@ -72,10 +71,10 @@ def required(scheme, scheme_package, component_type):
                     if "required" in config["scheme_rules"][str(scheme.value)][component_type]:
                         for index in config["scheme_rules"][str(scheme.value)][component_type]["required"]:
                             component = getattr(scheme_package, component_type.title())(index)
-                            required.update([component])
+                            required_set.update([component])
 
     # return the list or None if it is empty
-    return None if len(required) == 0 else required
+    return None if not required_set else required_set
 
 def exclusive(scheme, scheme_package, component_type):
     '''
@@ -86,7 +85,7 @@ def exclusive(scheme, scheme_package, component_type):
     pass validation.
     '''
     # traverse the base rules to find exclusive components
-    exclusive = set()
+    exclusive_set = set()
     for rules_set in ["BASE", "HOUSE"]:
         config = getattr(scheme_package, "{}_RULES_CONFIG".format(rules_set))
         if "scheme_rules" in config:
@@ -95,10 +94,10 @@ def exclusive(scheme, scheme_package, component_type):
                     if "exclusive" in config["scheme_rules"][str(scheme.value)][component_type]:
                         for index in config["scheme_rules"][str(scheme.value)][component_type]["exclusive"]:
                             component = getattr(scheme_package, component_type.title())(index)
-                            exclusive.update([component])
+                            exclusive_set.update([component])
 
     # return the list or None if it is empty
-    return None if len(exclusive) == 0 else exclusive
+    return None if not exclusive_set else exclusive_set
 
 ## This section is for loading the various rules configurations from file, and
 #  in the case the file does not yet exist, loading a default configuration and
@@ -153,7 +152,9 @@ def load_rules_configuration(set_package, rules_type="base"):
 
     # skip if already loaded
     if getattr(set_package, "{}_RULES_CONFIG".format(rules_type.upper())) is not None:
-        logging.debug("'%s' %s rules configuration already loaded, skipping...", package_name.replace("_"," ").title(), rules_type)
+        logging.debug("'%s' %s rules configuration already loaded, skipping...",
+                      package_name.replace("_", " ").title(),
+                      rules_type)
         return
 
     # ensure the data directory exists
@@ -167,10 +168,14 @@ def load_rules_configuration(set_package, rules_type="base"):
     try:
         with open(rules_config_file, "r") as rules_config_data_ref:
             setattr(set_package, "{}_RULES_CONFIG".format(rules_type.upper()), json.load(rules_config_data_ref))
-            logging.info("'%s' %s rules configuration loaded", package_name.replace("_"," ").title(), rules_type)
+            logging.info("'%s' %s rules configuration loaded", package_name.replace("_", " ").title(), rules_type)
     except FileNotFoundError:
         default_config = "DEFAULT_{}_RULES_CONFIG".format(rules_type.upper())
-        setattr(set_package, "{}_RULES_CONFIG".format(rules_type.upper()), json.loads(getattr(set_package, default_config)))
+        setattr(set_package,
+                "{}_RULES_CONFIG".format(rules_type.upper()),
+                json.loads(getattr(set_package, default_config)))
         with open(rules_config_file, "w") as rules_config_data_ref:
             json.dump(getattr(set_package, "{}_RULES_CONFIG".format(rules_type.upper())), rules_config_data_ref)
-            logging.info("Created default '%s' %s rules configuration file", package_name.replace("_"," ").title(), rules_type)
+            logging.info("Created default '%s' %s rules configuration file",
+                         package_name.replace("_", " ").title(),
+                         rules_type)

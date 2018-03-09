@@ -4,8 +4,6 @@ Tests for the legendary.rules module.
 
 # core libraries
 import types
-from enum import Enum
-import itertools
 import json
 import logging
 import os
@@ -31,27 +29,6 @@ def base_rules():
             }
         }
     }
-
-@pytest.fixture
-def schemes_enum():
-    '''
-    Mock Schemes enumeration, just like the ones found in the set-specific types
-    module.
-    '''
-    schemes = {
-        1: ["Foo", "FOO"],
-        2: ["Bar", "BAR"],
-        3: ["Baz", "BAZ"],
-        4: ["Foobar", "FOOBAR"],
-    }
-    fake_schemes = Enum(
-        value="Schemes",
-        names=itertools.chain.from_iterable(
-            itertools.product(v, [k]) for k, v in schemes.items()
-        )
-    )
-    return fake_schemes
-
 
 @pytest.mark.parametrize("scheme_number,player_count,card_group,base_scheme_rules_section," \
                          "house_scheme_rules_section,count",
@@ -113,8 +90,8 @@ def schemes_enum():
                               {"4": {"masterminds": {"diff": -10}}}, 0)
                          ] # pylint: disable=too-many-arguments
                         )
-def test_count(base_rules, schemes_enum, scheme_number, player_count, card_group, base_scheme_rules_section, # pylint: disable=redefined-outer-name
-               house_scheme_rules_section, count):
+def test_count(base_rules, card_group_enum, # pylint: disable=redefined-outer-name
+               scheme_number, player_count, card_group, base_scheme_rules_section, house_scheme_rules_section, count):
     '''
     Test the function that checks how many of a given card type should be
     included in a game configuration for a given player count.
@@ -127,10 +104,10 @@ def test_count(base_rules, schemes_enum, scheme_number, player_count, card_group
         house_rules["scheme_rules"] = house_scheme_rules_section
     scheme_package = types.SimpleNamespace(BASE_RULES_CONFIG=base_rules,
                                            HOUSE_RULES_CONFIG=house_rules,
-                                           Schemes=schemes_enum)
+                                           Schemes=card_group_enum)
 
     # test
-    assert count == rules.count(schemes_enum(scheme_number), scheme_package, player_count, card_group)
+    assert count == rules.count(card_group_enum(scheme_number), scheme_package, player_count, card_group)
 
 @pytest.mark.parametrize("base_blacklisted,house_blacklisted,outcome",
                          [
@@ -152,7 +129,8 @@ def test_count(base_rules, schemes_enum, scheme_number, player_count, card_group
                              ([4], [4], True),    # blacklisted in both
                          ]
                         )
-def test_scheme_blacklisted(base_rules, schemes_enum, base_blacklisted, house_blacklisted, outcome): # pylint: disable=redefined-outer-name
+def test_scheme_blacklisted(base_rules, card_group_enum, # pylint: disable=redefined-outer-name
+                            base_blacklisted, house_blacklisted, outcome):
     '''
     Test the function that checks if a scheme has been blacklisted in either
     base and/or house rules, for a given player count.
@@ -165,10 +143,10 @@ def test_scheme_blacklisted(base_rules, schemes_enum, base_blacklisted, house_bl
         house_rules["blacklisted_schemes"] = {"1": house_blacklisted}
     scheme_package = types.SimpleNamespace(BASE_RULES_CONFIG=base_rules,
                                            HOUSE_RULES_CONFIG=house_rules,
-                                           Schemes=schemes_enum)
+                                           Schemes=card_group_enum)
 
     # test
-    assert outcome == rules.scheme_blacklisted(schemes_enum(4), scheme_package, 1)
+    assert outcome == rules.scheme_blacklisted(card_group_enum(4), scheme_package, 1)
 
 @pytest.mark.parametrize("card_group,base_scheme_rules_section,house_scheme_rules_section,outcome",
                          [
@@ -218,7 +196,8 @@ def test_scheme_blacklisted(base_rules, schemes_enum, base_blacklisted, house_bl
 
                          ] # pylint: disable=too-many-arguments
                         )
-def test_required(base_rules, schemes_enum, card_group, base_scheme_rules_section, house_scheme_rules_section, outcome): # pylint: disable=redefined-outer-name
+def test_required(base_rules, card_group_enum, # pylint: disable=redefined-outer-name
+                  card_group, base_scheme_rules_section, house_scheme_rules_section, outcome):
     '''
     Test the required function, which parses the base and house rules for
     "required" cards/card groups for a given scheme of a given card class.
@@ -232,15 +211,15 @@ def test_required(base_rules, schemes_enum, card_group, base_scheme_rules_sectio
         house_rules["scheme_rules"] = house_scheme_rules_section
     scheme_package = types.SimpleNamespace(BASE_RULES_CONFIG=base_rules,
                                            HOUSE_RULES_CONFIG=house_rules,
-                                           Schemes=schemes_enum,
-                                           Masterminds=schemes_enum)
+                                           Schemes=card_group_enum,
+                                           Masterminds=card_group_enum)
 
     # expand the outcome list, where appropriate
     if outcome:
-        outcome = {schemes_enum(index) for index in outcome}
+        outcome = {card_group_enum(index) for index in outcome}
 
     # test
-    assert outcome == rules.required(schemes_enum(4), scheme_package, card_group)
+    assert outcome == rules.required(card_group_enum(4), scheme_package, card_group)
 
 @pytest.mark.parametrize("card_group,base_scheme_rules_section,house_scheme_rules_section,outcome",
                          [
@@ -290,12 +269,8 @@ def test_required(base_rules, schemes_enum, card_group, base_scheme_rules_sectio
 
                          ] # pylint: disable=too-many-arguments
                         )
-def test_exclusive(base_rules, # pylint: disable=redefined-outer-name
-                   schemes_enum, # pylint: disable=redefined-outer-name
-                   card_group,
-                   base_scheme_rules_section,
-                   house_scheme_rules_section,
-                   outcome):
+def test_exclusive(base_rules, card_group_enum, # pylint: disable=redefined-outer-name
+                   card_group, base_scheme_rules_section, house_scheme_rules_section, outcome):
     '''
     Test the exclusive function, which parses the base and house rules for
     "exclusive" cards/card groups for a given scheme of a given card class.
@@ -310,17 +285,18 @@ def test_exclusive(base_rules, # pylint: disable=redefined-outer-name
         house_rules["scheme_rules"] = house_scheme_rules_section
     scheme_package = types.SimpleNamespace(BASE_RULES_CONFIG=base_rules,
                                            HOUSE_RULES_CONFIG=house_rules,
-                                           Schemes=schemes_enum,
-                                           Masterminds=schemes_enum)
+                                           Schemes=card_group_enum,
+                                           Masterminds=card_group_enum)
 
     # expand the outcome list, where appropriate
     if outcome:
-        outcome = {schemes_enum(index) for index in outcome}
+        outcome = {card_group_enum(index) for index in outcome}
 
     # test
-    assert outcome == rules.exclusive(schemes_enum(4), scheme_package, card_group)
+    assert outcome == rules.exclusive(card_group_enum(4), scheme_package, card_group)
 
-def test_create_directory(fs, caplog): # pylint: disable=invalid-name, unused-argument
+def test_create_directory(fs, # pylint: disable=invalid-name, unused-argument
+                          caplog):
     '''
     Test the _create_directory function where the target directory does not
     exist. Ensure that when it does exist, nothing bad happens.
@@ -371,7 +347,8 @@ def test_load_rules_configuration_already_loaded(caplog, rules_type):
     assert "'Foobar' {} rules configuration already loaded, skipping...".format(rules_type) in caplog.text
 
 @pytest.mark.parametrize("rules_type", [("base"), ("house")])
-def test_load_rules_configuration_no_file(monkeypatch, fs, caplog, rules_type): # pylint: disable=invalid-name
+def test_load_rules_configuration_no_file(fs, # pylint: disable=invalid-name
+                                          monkeypatch, caplog, rules_type):
     '''
     Test the load_rules_configuration function where the rules file does not yet
     exist. Ensure that the files has been saved as expected and that the content
@@ -384,7 +361,7 @@ def test_load_rules_configuration_no_file(monkeypatch, fs, caplog, rules_type): 
                                         __name__="legendary.foobar")
 
     # patch create_directory function, we test that elsewhere
-    monkeypatch.setattr(rules, "_create_directory", lambda directory: {})
+    monkeypatch.setattr(rules, "_create_directory", lambda directory: None)
     data_dir = user_data_dir("legendary", "Edward Petersen")
     fs.CreateDirectory(data_dir)
 
@@ -403,7 +380,8 @@ def test_load_rules_configuration_no_file(monkeypatch, fs, caplog, rules_type): 
                 {"default": "rules"})
 
 @pytest.mark.parametrize("rules_type", [("base"), ("house")])
-def test_load_rules_configuration_file_exists(monkeypatch, fs, rules_type): # pylint: disable=invalid-name
+def test_load_rules_configuration_file_exists(fs, # pylint: disable=invalid-name
+                                              monkeypatch, rules_type):
     '''
     Test the load_rules_configuration function where the rules config files
     *already* exists. Ensure that the config loaded into the exported rules
@@ -414,7 +392,7 @@ def test_load_rules_configuration_file_exists(monkeypatch, fs, rules_type): # py
                                         __name__="legendary.foobar")
 
     # patch create_directory function, we test that elsewhere
-    monkeypatch.setattr(rules, "_create_directory", lambda directory: {})
+    monkeypatch.setattr(rules, "_create_directory", lambda directory: None)
 
     # create the rules file that will be loaded
     data_dir = user_data_dir("legendary", "Edward Petersen")

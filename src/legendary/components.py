@@ -144,6 +144,10 @@ class GameConfiguration(object):
     based on rules from the rule book, text on the actual cards (schemes and
     masterminds), and house rules.
     '''
+
+    # pylint: disable=too-many-instance-attributes
+    # I can't control how many components are in the game
+
     def __init__(self, scheme, scheme_set_name, always_leads=True, player_count=1):
         '''
         Create an instance of a GameConfiguration. Initialize the data
@@ -159,8 +163,6 @@ class GameConfiguration(object):
                                 configuration, which is the first bit of meta
                                 data on which validation happens.
         '''
-        # pylint: disable=too-many-instance-attributes
-        # I can't control how many components are in the game
 
         self.__scheme = (scheme, scheme_set_name)
         self.__always_leads = always_leads

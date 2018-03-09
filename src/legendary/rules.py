@@ -25,11 +25,11 @@ def count(scheme, scheme_package, player_count, card_class):
     base_count = base_rules["player_counts"][str(player_count)][card_class]
 
     for rules_set in [base_rules, house_rules]:
-        if "scheme_rules" in rules_set:
-            if str(scheme.value) in rules_set["scheme_rules"]:
-                if card_class in rules_set["scheme_rules"][str(scheme.value)]:
-                    if "diff" in rules_set["scheme_rules"][str(scheme.value)][card_class]:
-                        base_count += rules_set["scheme_rules"][str(scheme.value)][card_class]["diff"]
+        try:
+            base_count += rules_set["scheme_rules"][str(scheme.value)][card_class]["diff"]
+        except KeyError:
+            # it's ok if the rules don't include count diffs
+            pass
 
     # if this brings us below zero, return zero (can't have negative cards in a
     # deck!)
@@ -44,11 +44,13 @@ def scheme_blacklisted(scheme, scheme_package, player_count):
     blacklisted = []
     for rules_set in ["BASE", "HOUSE"]:
         config = getattr(scheme_package, "{}_RULES_CONFIG".format(rules_set))
-        if "blacklisted_schemes" in config:
-            if str(player_count) in config["blacklisted_schemes"]:
-                for scheme_index in config["blacklisted_schemes"][str(player_count)]:
-                    blacklisted_scheme = scheme_package.Schemes(scheme_index)
-                    blacklisted.append(blacklisted_scheme)
+        try:
+            for scheme_index in config["blacklisted_schemes"][str(player_count)]:
+                blacklisted_scheme = scheme_package.Schemes(scheme_index)
+                blacklisted.append(blacklisted_scheme)
+        except KeyError:
+            # it's ok if the rules don't include blacklisted schemes
+            pass
 
     # return if scheme is in the blacklist
     return scheme in blacklisted
@@ -65,13 +67,13 @@ def required(scheme, scheme_package, component_type):
     required_set = set()
     for rules_set in ["BASE", "HOUSE"]:
         config = getattr(scheme_package, "{}_RULES_CONFIG".format(rules_set))
-        if "scheme_rules" in config:
-            if str(scheme.value) in config["scheme_rules"]:
-                if component_type in config["scheme_rules"][str(scheme.value)]:
-                    if "required" in config["scheme_rules"][str(scheme.value)][component_type]:
-                        for index in config["scheme_rules"][str(scheme.value)][component_type]["required"]:
-                            component = getattr(scheme_package, component_type.title())(index)
-                            required_set.update([component])
+        try:
+            for index in config["scheme_rules"][str(scheme.value)][component_type]["required"]:
+                component = getattr(scheme_package, component_type.title())(index)
+                required_set.update([component])
+        except KeyError:
+            # it's ok if the rules don't include requirements
+            pass
 
     # return the list or None if it is empty
     return None if not required_set else required_set
@@ -88,13 +90,13 @@ def exclusive(scheme, scheme_package, component_type):
     exclusive_set = set()
     for rules_set in ["BASE", "HOUSE"]:
         config = getattr(scheme_package, "{}_RULES_CONFIG".format(rules_set))
-        if "scheme_rules" in config:
-            if str(scheme.value) in config["scheme_rules"]:
-                if component_type in config["scheme_rules"][str(scheme.value)]:
-                    if "exclusive" in config["scheme_rules"][str(scheme.value)][component_type]:
-                        for index in config["scheme_rules"][str(scheme.value)][component_type]["exclusive"]:
-                            component = getattr(scheme_package, component_type.title())(index)
-                            exclusive_set.update([component])
+        try:
+            for index in config["scheme_rules"][str(scheme.value)][component_type]["exclusive"]:
+                component = getattr(scheme_package, component_type.title())(index)
+                exclusive_set.update([component])
+        except KeyError:
+            # it's ok if the rules don't include exclusive requirements
+            pass
 
     # return the list or None if it is empty
     return None if not exclusive_set else exclusive_set

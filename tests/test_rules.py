@@ -15,7 +15,7 @@ from appdirs import user_data_dir
 import pytest
 
 # code under test
-from legendary import rules
+from legendary import rules, util
 
 @pytest.fixture
 def base_rules():
@@ -295,41 +295,6 @@ def test_exclusive(base_rules, card_group_enum, # pylint: disable=redefined-oute
     # test
     assert outcome == rules.exclusive(card_group_enum(4), scheme_package, card_group)
 
-def test_create_directory(fs, # pylint: disable=invalid-name, unused-argument
-                          caplog):
-    '''
-    Test the _create_directory function where the target directory does not
-    exist. Ensure that when it does exist, nothing bad happens.
-    '''
-    # call _create_data_directory when it does not exist, verify that it was
-    # created in the fake filesystem
-    data_dir = user_data_dir("legendary", "Edward Petersen")
-    assert not os.path.exists(data_dir)
-    caplog.set_level(logging.DEBUG)
-    rules._create_directory(data_dir) # pylint: disable=protected-access
-    assert "Created the user data directory at: {}".format(data_dir) in caplog.text
-    assert os.path.exists(data_dir)
-
-    # call it again now that the directory exists, to hit the exception (that
-    # ignores it)
-    rules._create_directory(data_dir) # pylint: disable=protected-access
-    assert "User data directory '{}' already exists".format(data_dir) in caplog.text
-
-def test_create_directory_no_permission(fs): # pylint: disable=invalid-name
-    '''
-    Test the _create_directory function where the target directory to create
-    cannot be created for a reason *other* than that it already exists - here,
-    specifically, we use bad permissions.
-    '''
-    # create the parent directory to the user data directory in the fake file
-    # system, but with harsh permissions, so as to see the raised exception that
-    # *isn't* EEXIST
-    data_dir = user_data_dir("legendary", "Edward Petersen")
-    parent_dir = os.path.dirname(data_dir)
-    fs.CreateDirectory(parent_dir, 0o444)
-    with pytest.raises(PermissionError):
-        rules._create_directory(data_dir) # pylint: disable=protected-access
-
 @pytest.mark.parametrize("rules_type", [("base"), ("house")])
 def test_load_rules_configuration_already_loaded(caplog, rules_type):
     '''
@@ -361,7 +326,7 @@ def test_load_rules_configuration_no_file(fs, # pylint: disable=invalid-name
                                         __name__="legendary.foobar")
 
     # patch create_directory function, we test that elsewhere
-    monkeypatch.setattr(rules, "_create_directory", lambda directory: None)
+    monkeypatch.setattr(util, "create_directory", lambda directory: None)
     data_dir = user_data_dir("legendary", "Edward Petersen")
     fs.CreateDirectory(data_dir)
 
@@ -392,7 +357,7 @@ def test_load_rules_configuration_file_exists(fs, # pylint: disable=invalid-name
                                         __name__="legendary.foobar")
 
     # patch create_directory function, we test that elsewhere
-    monkeypatch.setattr(rules, "_create_directory", lambda directory: None)
+    monkeypatch.setattr(util, "create_directory", lambda directory: None)
 
     # create the rules file that will be loaded
     data_dir = user_data_dir("legendary", "Edward Petersen")

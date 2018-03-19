@@ -5,13 +5,15 @@ and overrides can be kept over many executions.
 '''
 
 # core libraries
-import errno
 import json
 import logging
 import os
 
 # third party libraries
 from appdirs import user_data_dir
+
+# legendary libraries
+from . util import create_directory
 
 ## This section of functions is used to validate game configurations.
 
@@ -129,21 +131,6 @@ def exclusive(scheme, scheme_package, component_type):
 #  list *cannot* contain other items)
 #
 
-def _create_directory(directory):
-    '''
-    Create a directory, if necessary.
-    '''
-    # ensure directory exists
-    try:
-        os.makedirs(directory)
-        logging.debug("Created the user data directory at: %s", directory)
-    except OSError as os_error:
-        # ignore if it already exists - this will be true 99% of the time
-        if os_error.errno == errno.EEXIST:
-            logging.debug("User data directory '%s' already exists", directory)
-        else:
-            raise
-
 def load_rules_configuration(set_package, rules_type="base"):
     '''
     Load the rules configuration from disk. If the file does not exist, save the
@@ -161,7 +148,7 @@ def load_rules_configuration(set_package, rules_type="base"):
 
     # ensure the data directory exists
     data_dir = user_data_dir("legendary", "Edward Petersen")
-    _create_directory(data_dir)
+    create_directory(data_dir)
 
     # attempt to load the rules config file - on error, load the default and
     # save it to file

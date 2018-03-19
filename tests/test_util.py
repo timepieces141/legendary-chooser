@@ -3,8 +3,13 @@ Tests for the legendary.util module.
 '''
 
 # core libraries
-import types
 import importlib
+import logging
+import os
+import types
+
+# third party libraries
+from appdirs import user_data_dir
 
 # testing imports
 import pytest
@@ -76,3 +81,38 @@ def test_get_package_from_name_success(find_spec, module_from_spec, # pylint: di
     # was saved to state remains and is correct
     assert util.get_package_from_name("foobar") == "foobar"
     assert util.get_package_from_name("foobar") == "foobar"
+
+def test_create_directory(fs, # pylint: disable=invalid-name, unused-argument
+                          caplog):
+    '''
+    Test the create_directory function where the target directory does not
+    exist. Ensure that when it does exist, nothing bad happens.
+    '''
+    # call _create_data_directory when it does not exist, verify that it was
+    # created in the fake filesystem
+    data_dir = user_data_dir("legendary", "Edward Petersen")
+    assert not os.path.exists(data_dir)
+    caplog.set_level(logging.DEBUG)
+    util.create_directory(data_dir) # pylint: disable=protected-access
+    assert "Created the directory at: {}".format(data_dir) in caplog.text
+    assert os.path.exists(data_dir)
+
+    # call it again now that the directory exists, to hit the exception (that
+    # ignores it)
+    util.create_directory(data_dir) # pylint: disable=protected-access
+    assert "Directory '{}' already exists".format(data_dir) in caplog.text
+
+def test_create_directory_no_permission(fs): # pylint: disable=invalid-name
+    '''
+    Test the create_directory function where the target directory to create
+    cannot be created for a reason *other* than that it already exists - here,
+    specifically, we use bad permissions.
+    '''
+    # create the parent directory to the user data directory in the fake file
+    # system, but with harsh permissions, so as to see the raised exception that
+    # *isn't* EEXIST
+    data_dir = user_data_dir("legendary", "Edward Petersen")
+    parent_dir = os.path.dirname(data_dir)
+    fs.CreateDirectory(parent_dir, 0o444)
+    with pytest.raises(PermissionError):
+        util.create_directory(data_dir) # pylint: disable=protected-access

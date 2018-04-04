@@ -17,6 +17,12 @@ class LegendaryError(Exception):
                             "exception yet to be defined")
         super(LegendaryError, self).__init__(message)
 
+class InitializationError(LegendaryError):
+    '''
+    Exception raised when there is an error in one of the startup processes.
+    '''
+    pass
+
 class ConfigurationError(LegendaryError):
     '''
     Exception raised when there is an error in the configruration process.

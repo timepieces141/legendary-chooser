@@ -48,6 +48,9 @@ PACKAGES = [
     'legendary/buffy',
     'legendary/big_trouble'
 ]
+PACKAGE_DATA = {
+    'legendary': ['data/*.config']
+}
 
 # scripts
 SCRIPTS = [
@@ -154,6 +157,7 @@ setup(
     install_requires=INSTALL_REQUIRES,
     package_dir=PACKAGE_DIR,
     packages=PACKAGES,
+    package_data=PACKAGE_DATA,
     scripts=SCRIPTS,
     entry_points={
         'console_scripts': [
